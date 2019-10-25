@@ -20,13 +20,13 @@ defmodule Tapestry.Network do
 
   def handle_cast({:message_received, hop}, state) do
     new_m = state.messages_received + 1
+    IO.inspect(new_m)
     new_state = if hop > state.max_hops do
       %{state | messages_received: new_m, max_hops: hop}  
     else
       %{state | messages_received: new_m}
     end
     if new_m == state.num_requests * state.num_nodes do
-      IO.inspect(new_m)
       IO.inspect(state.max_hops)
       send(state.main_pid, :end)
     end

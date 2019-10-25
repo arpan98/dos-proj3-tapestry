@@ -28,20 +28,20 @@ defmodule Tapestry.Actor do
     {:noreply, state}
   end  
 
-  def handle_cast({:find_root_new_node, new_node_details, level, hop}, state) do
-    if level == state.max_hop do
-      # IO.inspect(["found root", state.self_id, hop, level])
-      acknowledged_multicast(new_node_details, state)
-      GenServer.cast({:acknowledge, {state.self_id, self()}})
-    else
-      # IO.inspect(["new node", new_node_details])
-      {new_id, new_pid} = new_node_details
-      {next_id, next_pid, level} = next_hop(level, new_id, state)
-      # IO.inspect(["next hop", {next_id, next_pid, level}])
-      GenServer.cast(next_pid, {:find_root_new_node, new_node_details, level, hop+1})
-    end
-    {:noreply, state}
-  end
+  # def handle_cast({:find_root_new_node, new_node_details, level, hop}, state) do
+  #   if level == state.max_hop do
+  #     # IO.inspect(["found root", state.self_id, hop, level])
+  #     acknowledged_multicast(new_node_details, state)
+  #     GenServer.cast({:acknowledge, {state.self_id, self()}})
+  #   else
+  #     # IO.inspect(["new node", new_node_details])
+  #     {new_id, new_pid} = new_node_details
+  #     {next_id, next_pid, level} = next_hop(level, new_id, state)
+  #     # IO.inspect(["next hop", {next_id, next_pid, level}])
+  #     GenServer.cast(next_pid, {:find_root_new_node, new_node_details, level, hop+1})
+  #   end
+  #   {:noreply, state}
+  # end
 
   def handle_cast({:acknowledge, {id, pid}}, state) do
     p = Enum.map(0..state.max_hop-1, fn i ->

@@ -1,5 +1,5 @@
 defmodule Tapestry do
-  def start_network(num_nodes, num_requests) do
+  def start_network(num_nodes) do
     children = 1..num_nodes
     |> Enum.map(fn i -> 
       Supervisor.child_spec({Tapestry.Actor, [i, 4]}, id: {Tapestry.Actor, i})
@@ -53,12 +53,17 @@ defmodule Tapestry do
 
     # Create last node by dynamically adding and filling routing table using acknowledged multicast
     # add_node(List.last(nodes))
-    Enum.slice(nodes, 0..last) |>
-    Enum.each(fn {_, _, source_pid} ->
-      Enum.each(1..num_requests, fn r ->
-        send_message(source_pid)
-      end)
-    end)
+
+    nodes
+  end
+
+  def send_messages(nodes, numRequests) when is_list(nodes) do
+    if nodes != [] do
+      [head | tail] = nodes
+      {_, _, source_pid} = head
+      Enum.each(1..numRequests, fn _ -> send_message(source_pid) end)
+      send_messages(tail, numRequests)
+    end
   end
 
   def send_message(source_pid) do
