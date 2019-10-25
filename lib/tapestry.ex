@@ -1,5 +1,5 @@
 defmodule Tapestry do
-  def start_network(num_nodes) do
+  def start_network(num_nodes, backup_links) do
     children = 1..num_nodes
     |> Enum.map(fn i -> 
       Supervisor.child_spec({Tapestry.Actor, [i, 4]}, id: {Tapestry.Actor, i})
@@ -36,13 +36,18 @@ defmodule Tapestry do
           end)
           |> Enum.filter(& !is_nil(&1))
           # Choose the best option = minimum difference between indices (not hash id)
-          {_, _, chosen_id, chosen_pid} =
+          links =
             if Enum.empty?(options) do
-              {"", "", "", ""}
+              [{"", ""}]
             else
-             Enum.min_by(options, fn {diff, _, _, _} -> diff end)
+             Enum.sort_by(options, fn {diff, _, _, _} -> diff end)
+             |> Enum.map(fn {_, _, chosen_id, chosen_pid} -> {chosen_id, chosen_pid} end)
             end
-          Map.put(acc2, Integer.to_string(y, 16), {chosen_id, chosen_pid})
+          if backup_links do
+            Map.put(acc2, Integer.to_string(y, 16), Enum.take(links, 3))
+          else
+            Map.put(acc2, Integer.to_string(y, 16), Enum.take(links, 1))
+          end
         end)
         Map.put(acc, x, m)
       end)
@@ -55,6 +60,17 @@ defmodule Tapestry do
     # add_node(List.last(nodes))
 
     nodes
+  end
+
+  def fail_nodes(nodes, failure_prob) do
+    Enum.reduce(nodes, 0, fn {_, _, pid}, acc ->
+      if fail_test(failure_prob) do
+        Process.exit(pid, :kill)
+        acc + 1
+      else
+        acc
+      end
+    end) # |> IO.inspect()
   end
 
   def send_messages(nodes, numRequests) when is_list(nodes) do
@@ -81,6 +97,11 @@ defmodule Tapestry do
         # IO.inspect(["random source", node_id, node_pid])
         GenServer.cast(node_pid, {:find_root_new_node, new_node_details, 0, 0})
     end
+  end
+
+  defp fail_test(p) do
+    roll = :rand.uniform()
+    if roll <= p, do: true, else: false
   end
 
 end

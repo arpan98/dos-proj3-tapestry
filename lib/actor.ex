@@ -1,5 +1,5 @@
 defmodule Tapestry.Actor do
-  use GenServer
+  use GenServer, restart: :temporary
 
   def start_link(arg) do
     GenServer.start_link(__MODULE__, arg)
@@ -94,7 +94,7 @@ defmodule Tapestry.Actor do
   end
 
   def check_entry(state, n, d, d_initial, loop) do
-    {e_id, e_pid} = get_in(state.routing_table, [n, d])
+    {e_id, e_pid} = get_entry(state, n, d)
     if loop == 1 and d == d_initial do
       {state.self_id, self()}
     else
@@ -107,4 +107,23 @@ defmodule Tapestry.Actor do
       end
     end
   end
+
+  def get_entry(state, n, d, backup_idx \\ 0) do
+    next = state.routing_table |> get_in([n, d])
+    if backup_idx <= length(next)-1 do
+      {_, next_pid} = next |> Enum.at(backup_idx)
+      if next_pid != "" do
+        if Process.alive?(next_pid) do
+          next |> Enum.at(backup_idx)
+        else
+          get_entry(state, n, d, backup_idx+1)
+        end  
+      else
+        {"", ""}
+      end
+    else
+      {"", ""}
+    end
+  end
+
 end

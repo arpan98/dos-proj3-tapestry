@@ -11,7 +11,8 @@ defmodule Project3 do
 
   defp run([numNodes, numRequests]) do
     GenServer.start_link(Tapestry.Network, [numNodes, numRequests, self()], name: MyNetwork)
-    nodes = Tapestry.start_network(numNodes)
+    nodes = Tapestry.start_network(numNodes, false)
+    Tapestry.fail_nodes(nodes, 0)
     Tapestry.send_messages(nodes, numRequests)
     loop()
   end
