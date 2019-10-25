@@ -15,10 +15,10 @@ defmodule Project3 do
     # IO.inspect nodes
     # Tapestry.check_routing(nodes)
 
-    Tapestry.fail_nodes(nodes, 0.1)
+    # Tapestry.fail_nodes(nodes, 0.1)
     Tapestry.send_messages(nodes, numRequests)
-    GenServer.call(MyNetwork, :reset)
-    Tapestry.send_messages(nodes, numRequests)
+    # GenServer.call(MyNetwork, :reset)
+    # Tapestry.send_messages(nodes, numRequests)
 
     loop()
   end

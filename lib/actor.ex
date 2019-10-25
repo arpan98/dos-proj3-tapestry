@@ -95,16 +95,19 @@ defmodule Tapestry.Actor do
     Enum.reduce(0..7,  %{}, fn i_level, level_acc ->
       cond do
         i_level <= p_level -> Map.put(level_acc, i_level, Map.get(state.routing_table, i_level)) # nodes at level not greater than p-level in the routing table of the current node
-        true -> Map.put(level_acc, i_level, {"", ""}) # nodes at level greater than p-level in the routing table of the current node
+        true -> level_map = Enum.reduce(0..15, %{}, fn i_slot, slot_acc ->
+          Map.put(slot_acc, Integer.to_string(i_slot, 16), [{"", ""}])
+        end)
+          Map.put(level_acc, i_level, level_map) # nodes at level greater than p-level in the routing table of the current node
       end
     end)
   end
 
-  defp match_level(level, next_id, self_id) do
-    if String.length(self_id) <= 8 and String.slice(next_id, level, 1) <= String.slice(self_id, level, 1) do
-      match_level(level + 1, next_id, self_id)
+  defp match_level(level, node_id, self_id) do
+    if String.length(self_id) <= 8 and String.slice(node_id, level, 1) <= String.slice(self_id, level, 1) do
+      match_level(level + 1, node_id, self_id)
     else
-      level - 1
+      level
     end
   end
 

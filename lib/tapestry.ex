@@ -62,6 +62,7 @@ defmodule Tapestry do
 
     # Create last node by dynamically adding and filling routing table using acknowledged multicast
     insert_dynamic_node(dynamic_node, main_pid)
+    check_routing([dynamic_node])
 
     active_nodes
   end
@@ -101,13 +102,13 @@ defmodule Tapestry do
     GenServer.cast(next_node_pid, {:route, new_node, 0, 0})
     :timer.sleep(5000)
     GenServer.cast(next_node_pid, {:send_to, new_node, 0, 0})
-    send(main_pid, :end)
+    # send(main_pid, :end)
   end
 
   defp init_routing() do
     Enum.reduce(0..7, %{}, fn i_level, level_acc ->
       level_map = Enum.reduce(0..15, %{}, fn i_slot, slot_acc ->
-        Map.put(slot_acc, Integer.to_string(i_slot, 16), {"", ""})
+        Map.put(slot_acc, Integer.to_string(i_slot, 16), [{"", ""}])
       end)
       Map.put(level_acc, i_level, level_map)
     end)
