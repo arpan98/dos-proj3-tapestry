@@ -2,13 +2,13 @@ defmodule Tapestry do
   def start_network(num_nodes, backup_links) do
     children = 1..num_nodes
     |> Enum.map(fn i -> 
-      Supervisor.child_spec({Tapestry.Actor, [i, 4]}, id: {Tapestry.Actor, i})
+      Supervisor.child_spec({Tapestry.Actor, [i, 8]}, id: {Tapestry.Actor, i})
     end)
     Supervisor.start_link(children, strategy: :one_for_one, name: NodeSupervisor)
 
     nodes = Enum.map(Supervisor.which_children(NodeSupervisor), fn child ->
       {{_, idx}, pid, _, _} = child
-      id = :crypto.hash(:sha, Integer.to_string(idx)) |> Base.encode16 |> String.slice(0..3)
+      id = :crypto.hash(:sha, Integer.to_string(idx)) |> Base.encode16 |> String.slice(0..7)
       {idx, id, pid}
     end)
 
@@ -18,7 +18,7 @@ defmodule Tapestry do
     Enum.slice(nodes, 0..last) |>
     Enum.each(fn {idx, id, pid} ->
       # Routing table is a map of maps created by Enum.reduce where first key is the level and second key is the hex digit
-      routing_table = Enum.reduce(0..3, %{}, fn x, acc ->
+      routing_table = Enum.reduce(0..7, %{}, fn x, acc ->
         m = Enum.reduce(0..15, %{}, fn y, acc2 -> 
           # options = All possible options for a particular spot in the table
           options = Enum.slice(nodes, 0..last) |> Enum.map(fn {nidx, nid, npid} ->

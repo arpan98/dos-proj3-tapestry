@@ -9,7 +9,7 @@ defmodule Tapestry.Network do
     {:ok, %{node_list: [], max_hops: 0, messages_received: 0, num_nodes: num_nodes, num_requests: num_requests, main_pid: main_pid}}
   end
 
-  def handle_call(:get_random, from, state) do
+  def handle_call(:get_random, _from, state) do
     if Enum.empty?(state.node_list) do
       {:reply, :first_node, state}
     else
@@ -20,7 +20,7 @@ defmodule Tapestry.Network do
 
   def handle_cast({:message_received, hop}, state) do
     new_m = state.messages_received + 1
-    # IO.inspect(new_m)
+    IO.inspect(new_m)
     new_state = if hop > state.max_hops do
       %{state | messages_received: new_m, max_hops: hop}  
     else
@@ -36,6 +36,11 @@ defmodule Tapestry.Network do
   def handle_call({:add_node, node_details}, _from, state) do
     new_node_list = [node_details | state.node_list]
     new_state = %{state | node_list: new_node_list}
+    {:reply, new_state, new_state}
+  end
+
+  def handle_call(:reset, _from, state) do
+    new_state = %{state | node_list: [], max_hops: 0, messages_received: 0}
     {:reply, new_state, new_state}
   end
 end
