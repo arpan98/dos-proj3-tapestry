@@ -22,7 +22,7 @@ defmodule Tapestry.Network do
     new_m = state.messages_received + 1
     IO.inspect(new_m)
     new_state = if hop > state.max_hops do
-      %{state | messages_received: new_m, max_hops: hop}  
+      %{state | messages_received: new_m, max_hops: hop}
     else
       %{state | messages_received: new_m}
     end
@@ -43,4 +43,9 @@ defmodule Tapestry.Network do
     new_state = %{state | node_list: [], max_hops: 0, messages_received: 0}
     {:reply, new_state, new_state}
   end
+
+  def handle_call(:get_nodes, _from, state) do
+    {:reply, state.node_list, state}
+  end
+
 end
