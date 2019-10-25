@@ -1,5 +1,5 @@
 defmodule Tapestry do
-  def create_network(num_nodes) do
+  def start_network(num_nodes, num_requests) do
     children = 1..num_nodes
     |> Enum.map(fn i -> 
       Supervisor.child_spec({Tapestry.Actor, [i, 4]}, id: {Tapestry.Actor, i})
@@ -13,15 +13,15 @@ defmodule Tapestry do
     end)
 
     # Create first n-1 nodes initially with routing tables filled
-
+    last = -1
     # Create routing tables for each node and cast them to the actor processes
-    Enum.slice(nodes, 0..-2) |>
+    Enum.slice(nodes, 0..last) |>
     Enum.each(fn {idx, id, pid} ->
       # Routing table is a map of maps created by Enum.reduce where first key is the level and second key is the hex digit
       routing_table = Enum.reduce(0..3, %{}, fn x, acc ->
         m = Enum.reduce(0..15, %{}, fn y, acc2 -> 
           # options = All possible options for a particular spot in the table
-          options = Enum.slice(nodes, 0..-2) |> Enum.map(fn {nidx, nid, npid} ->
+          options = Enum.slice(nodes, 0..last) |> Enum.map(fn {nidx, nid, npid} ->
             # IO.inspect([String.slice(id, 0..x), String.slice(nid, 0..x), String.at(nid, x+1), Integer.to_string(y, 16)])
             # Match 0..x-1 position and check (x+1)th character with the hex digit of the spot in table
             if x == 0 do
@@ -52,11 +52,16 @@ defmodule Tapestry do
     end)
 
     # Create last node by dynamically adding and filling routing table using acknowledged multicast
-    add_node(List.last(nodes))
+    # add_node(List.last(nodes))
+    Enum.slice(nodes, 0..last) |>
+    Enum.each(fn {_, _, source_pid} ->
+      Enum.each(1..num_requests, fn r ->
+        send_message(source_pid)
+      end)
+    end)
   end
 
-  def send_message() do
-    {source_id, source_pid} = GenServer.call(MyNetwork, :get_random)
+  def send_message(source_pid) do
     destination = GenServer.call(MyNetwork, :get_random)
     GenServer.cast(source_pid, {:send_to, destination, 0, 0})
   end
@@ -72,4 +77,5 @@ defmodule Tapestry do
         GenServer.cast(node_pid, {:find_root_new_node, new_node_details, 0, 0})
     end
   end
+
 end

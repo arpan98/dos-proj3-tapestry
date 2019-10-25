@@ -5,8 +5,8 @@ defmodule Tapestry.Network do
     GenServer.start_link(__MODULE__, arg)
   end
 
-  def init([num_requests, main_pid]) do
-    {:ok, %{node_list: [], hops: [], messages_received: 0, num_requests: num_requests, main_pid: main_pid}}
+  def init([num_nodes, num_requests, main_pid]) do
+    {:ok, %{node_list: [], max_hops: 0, messages_received: 0, num_nodes: num_nodes, num_requests: num_requests, main_pid: main_pid}}
   end
 
   def handle_call(:get_random, from, state) do
@@ -20,10 +20,14 @@ defmodule Tapestry.Network do
 
   def handle_cast({:message_received, hop}, state) do
     new_m = state.messages_received + 1
-    new_hops = [hop | state.hops]
-    new_state = %{state | messages_received: new_m, hops: new_hops}
-    if new_m == state.num_requests do
-      Enum.max(new_hops) |> IO.puts
+    new_state = if hop > state.max_hops do
+      %{state | messages_received: new_m, max_hops: hop}  
+    else
+      %{state | messages_received: new_m}
+    end
+    if new_m == state.num_requests * state.num_nodes do
+      IO.inspect(new_m)
+      IO.inspect(state.max_hops)
       send(state.main_pid, :end)
     end
     {:noreply, new_state}

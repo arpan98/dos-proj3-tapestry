@@ -20,7 +20,7 @@ defmodule Tapestry.Actor do
     {dest_id, _} = destination
     {next_id, next_pid, level} = next_hop(level, dest_id, state)
     if level == state.max_hop and state.self_id == dest_id do
-      IO.puts("Reached #{dest_id} with #{hop} hops.")
+      # IO.puts("Reached #{dest_id} with #{hop} hops.")
       GenServer.cast(MyNetwork, {:message_received, hop})
     else
       GenServer.cast(next_pid, {:send_to, destination, level, hop+1})
@@ -43,9 +43,9 @@ defmodule Tapestry.Actor do
     {:noreply, state}
   end
 
-  def handle_cast({:acknowledge, {id, pid}}) do
+  def handle_cast({:acknowledge, {id, pid}}, state) do
     p = Enum.map(0..state.max_hop-1, fn i ->
-      if String.slice(state.self_id, 0..i) == String.slice(new_id, 0..i) do
+      if String.slice(state.self_id, 0..i) == String.slice(id, 0..i) do
         i+1
       else
         0

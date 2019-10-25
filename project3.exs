@@ -10,9 +10,8 @@ defmodule Project3 do
   end
 
   defp run([numNodes, numRequests]) do
-    GenServer.start_link(Tapestry.Network, [numRequests, self()], name: MyNetwork)
-    Tapestry.create_network(numNodes)
-    # Enum.each(1..numRequests, fn _ -> Tapestry.send_message() end)
+    GenServer.start_link(Tapestry.Network, [numNodes, numRequests, self()], name: MyNetwork)
+    Tapestry.start_network(numNodes, numRequests)
     loop()
   end
 
