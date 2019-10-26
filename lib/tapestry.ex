@@ -1,20 +1,19 @@
 defmodule Tapestry do
   def start_network(num_nodes, backup_links, main_pid) do
-    children = 1..num_nodes
-    |> Enum.map(fn i ->
-      Supervisor.child_spec({Tapestry.Actor, [i, 8]}, id: {Tapestry.Actor, i})
+    children = create_hashes(1, num_nodes, [])
+    |> Enum.with_index(1)
+    |> Enum.map(fn {id, i} ->
+      Supervisor.child_spec({Tapestry.Actor, [id, 8]}, id: {Tapestry.Actor, i, id})
     end)
     Supervisor.start_link(children, strategy: :one_for_one, name: NodeSupervisor)
 
     all_nodes = Enum.map(Supervisor.which_children(NodeSupervisor), fn child ->
-      {{_, idx}, pid, _, _} = child
-      id = :crypto.hash(:sha, Integer.to_string(idx)) |> Base.encode16 |> String.slice(0..7)
+      {{_, idx, id}, pid, _, _} = child
       {idx, id, pid}
     end)
 
     [dynamic_node | active_nodes] = all_nodes
-    IO.inspect active_nodes
-    IO.inspect dynamic_node
+    # IO.inspect(all_nodes)
 
     # Create first n-1 nodes initially with routing tables filled
     last = -1
@@ -61,21 +60,33 @@ defmodule Tapestry do
     end)
 
     # Create last node by dynamically adding and filling routing table using acknowledged multicast
-    insert_dynamic_node(dynamic_node, main_pid)
-    check_routing([dynamic_node])
+    insert_dynamic_node(dynamic_node)
+    # check_routing([dynamic_node])
+    # check_routing(all_nodes)
+    all_nodes
+  end
 
-    active_nodes
+  def create_hashes(idx, n, hash_list) do
+    id = :crypto.hash(:sha, Integer.to_string(idx)) |> Base.encode16 |> String.slice(0..7)
+    cond do
+      n == 0 -> hash_list
+      Enum.member?(hash_list, id) -> create_hashes(idx + 1, n, hash_list)
+      true -> 
+        new_hash_list = [id | hash_list]
+        create_hashes(idx + 1, n-1, new_hash_list)
+    end
   end
 
   def fail_nodes(nodes, failure_prob) do
-    Enum.reduce(nodes, 0, fn {_, _, pid}, acc ->
+    Enum.reduce(nodes, 0, fn {_, id, pid}, acc ->
       if fail_test(failure_prob) do
         Process.exit(pid, :kill)
+        GenServer.call(MyNetwork, {:remove_node, {id, pid}})
         acc + 1
       else
         acc
       end
-    end) # |> IO.inspect()
+    end)
   end
 
   def send_messages(nodes, numRequests) when is_list(nodes) do
@@ -92,23 +103,23 @@ defmodule Tapestry do
     GenServer.cast(source_pid, {:send_to, destination, 0, 0})
   end
 
-  defp insert_dynamic_node({_, new_node_id, new_node_pid}, main_pid) do
+  defp insert_dynamic_node({_, new_node_id, new_node_pid}) do
     new_node = {new_node_id, new_node_pid}
-    GenServer.call(new_node_pid, {:set_routing_table, init_routing()})
+    GenServer.call(new_node_pid, {:set_routing_table, init_routing(new_node)})
     {next_node_id, next_node_pid} = GenServer.call(MyNetwork, :get_random)
-    IO.puts("New Node: #{inspect(new_node)}")
-    IO.puts("Next Node: #{inspect({next_node_id, next_node_pid})}")
     GenServer.call(MyNetwork, {:add_node, new_node})
-    GenServer.cast(next_node_pid, {:route, new_node, 0, 0})
-    :timer.sleep(5000)
-    GenServer.cast(next_node_pid, {:send_to, new_node, 0, 0})
-    # send(main_pid, :end)
+    GenServer.call(next_node_pid, {:route, new_node, 0, 0})
   end
 
-  defp init_routing() do
+  defp init_routing(new_node) do
+    {new_node_id, new_node_pid} = new_node
     Enum.reduce(0..7, %{}, fn i_level, level_acc ->
       level_map = Enum.reduce(0..15, %{}, fn i_slot, slot_acc ->
-        Map.put(slot_acc, Integer.to_string(i_slot, 16), [{"", ""}])
+        node = cond do
+          Integer.to_string(i_slot, 16) == String.at(new_node_id, i_level) -> new_node
+          true -> {"", ""}
+        end
+        Map.put(slot_acc, Integer.to_string(i_slot, 16), [node])
       end)
       Map.put(level_acc, i_level, level_map)
     end)
@@ -119,11 +130,11 @@ defmodule Tapestry do
     if roll <= p, do: true, else: false
   end
 
-  defp check_routing(nodes) do
-    Enum.each(nodes, fn { _, id, pid} ->
-      IO.puts("Node: #{inspect({id, pid})} -------------------")
-      GenServer.call(pid, :get_state).routing_table |> IO.inspect()
-    end)
-  end
+  # defp check_routing(nodes) do
+  #   Enum.each(nodes, fn { _, id, pid} ->
+  #     # IO.puts("Node: #{inspect({id, pid})} -------------------")
+  #     GenServer.call(pid, :get_state).routing_table
+  #   end)
+  # end
 
 end
